@@ -26,12 +26,23 @@
 
 ## 4. Regras de Negócio Implementadas
 
-- **Nome do produto não pode ser duplicado.**
-- **Preço do produto deve ser menor ou igual a R$ 10.000,00.**
-- **Se o nome do produto contiver "Promoção", o preço deve ser menor que R$ 500,00.**
-- **Não é permitido salvar produto sem categoria.**
-- **A categoria deve ser escolhida por ID no cadastro/atualização do produto.**
-- **Nome da categoria não pode ser duplicado.**
+- **Produto**
+  - Não permite criar produto com nome duplicado.
+  - Não permite criar produto com id já existente.
+  - Não permite criar produto sem categoria existente (categoria obrigatória).
+  - O nome do produto deve ter entre 2 e 150 caracteres.
+  - O nome do produto é obrigatório.
+  - O preço do produto deve ser menor ou igual a R$ 10.000,00.
+  - Se o nome do produto contiver "Promoção", o preço deve ser menor que R$ 500,00.
+  - Não permite atualizar produto para nome já existente em outro produto.
+  - Não permite buscar, atualizar ou deletar produto inexistente.
+  - Não permite desconto maior que 50% nem menor que 0%.
+
+- **Categoria**
+  - Não permite criar categoria com nome duplicado.
+  - Não permite criar categoria com id já existente.
+  - O nome da categoria é obrigatório.
+  - Não permite buscar, atualizar ou deletar categoria inexistente.
 
 ## 5. Exemplos de Uso da API
 
