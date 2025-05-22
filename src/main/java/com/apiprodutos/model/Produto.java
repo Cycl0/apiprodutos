@@ -8,11 +8,10 @@ import jakarta.persistence.*;
 
 @Schema(description = "Produto cadastrado no sistema")
 @Entity
-@Table(name = "produtos")
+@Table(name = "produto")
 public class Produto {
     @Schema(description = "ID do produto", example = "1")
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @NotBlank(message = "O nome do produto é obrigatório")

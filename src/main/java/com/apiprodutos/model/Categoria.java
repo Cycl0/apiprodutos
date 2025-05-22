@@ -5,11 +5,10 @@ import jakarta.persistence.*;
 
 @Schema(description = "Categoria de produtos")
 @Entity
-@Table(name = "categorias")
+@Table(name = "categoria")
 public class Categoria {
     @Schema(description = "ID da categoria", example = "1")
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Schema(description = "Nome da categoria", example = "Informática")
