@@ -11,18 +11,18 @@
 - **Exception Handler**: Centraliza o tratamento de erros e personaliza as respostas de erro da API.
   - O Exception Handler pega os erros que acontecem na API e devolve uma resposta de erro mais organizada, com mensagem, status e outros detalhes para um melhor entendimento sobre o erro.
 
-![images/estrutura.png]
+![estrutura](images/estrutura.png)
 
 ## 2. Diagrama de Classes
 
-![images/diagrama_classes.png]
+![diagrama classes](images/diagrama_classes.png)
 
 - Um produto pertence a uma categoria.
 - Uma categoria pode ter muitos produtos.
 
 ## 3. Prints do Swagger
 
-![images/swagger.png]
+![swagger](images/swagger.png)
 
 ## 4. Regras de Negócio Implementadas
 
