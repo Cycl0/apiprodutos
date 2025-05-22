@@ -1,6 +1,6 @@
 # API de Produtos
 
-Documentação técnica completa: [`DOCUMENTACAO.md`](./DOCUMENTACAO.md).
+Documentação técnica completa: [`documentacao.md`](./documentacao.md).
 
 ## Pré-requisitos
 - Java 17 ou superior
