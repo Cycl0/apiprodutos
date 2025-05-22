@@ -22,6 +22,7 @@ import io.swagger.v3.oas.annotations.parameters.*;
 
 import com.apiprodutos.dto.DescontoResponse;
 import com.apiprodutos.exception.ErrorResponse;
+import com.apiprodutos.exception.RegraNegocioException;
 
 @RestController
 @RequestMapping("/categorias")
@@ -57,7 +58,7 @@ public class CategoriaController {
         Categoria categoria = categoriaRepository.findById(id)
             .orElse(null);
         if (categoria == null) {
-            throw new RuntimeException("Categoria não encontrada.");
+            throw new RegraNegocioException("Categoria não encontrada.");
         }
         return ResponseEntity.ok(categoria);
     }
@@ -89,7 +90,7 @@ public class CategoriaController {
         Categoria categoria = categoriaRepository.findById(id)
             .orElse(null);
         if (categoria == null) {
-            throw new RuntimeException("Categoria não encontrada.");
+            throw new RegraNegocioException("Categoria não encontrada.");
         }
         return ResponseEntity.ok(produtoRepository.findByCategoriaId(id));
     }
@@ -105,11 +106,11 @@ public class CategoriaController {
         return ResponseEntity.ok(categoriaRepository.findByNomeContainingIgnoreCase(nome));
     }
 
-    @Operation(summary = "Criar nova categoria", description = "Cadastra uma nova categoria. Não permite nomes duplicados.")
+    @Operation(summary = "Criar nova categoria", description = "Cadastra uma nova categoria. Não permite nomes duplicados e impede id duplicado.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Categoria criada com sucesso",
             content = @Content(schema = @Schema(implementation = Categoria.class))),
-        @ApiResponse(responseCode = "400", description = "Nome da categoria já existe",
+        @ApiResponse(responseCode = "400", description = "Nome da categoria já existe ou id já existe",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping
@@ -117,10 +118,13 @@ public class CategoriaController {
         @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Dados da categoria a ser criada", required = true,
             content = @Content(schema = @Schema(implementation = Categoria.class)))
         @RequestBody Categoria categoria) {
+        if (categoria.getId() != null && categoriaRepository.existsById(categoria.getId())) {
+            throw new RegraNegocioException("ID da categoria já existe");
+        }
         boolean nomeDuplicado = categoriaRepository.findAll().stream()
             .anyMatch(c -> c.getNome().equalsIgnoreCase(categoria.getNome()));
         if (nomeDuplicado) {
-            throw new RuntimeException("Já existe uma categoria com esse nome.");
+            throw new RegraNegocioException("Já existe uma categoria com esse nome.");
         }
         Categoria salva = categoriaRepository.save(categoria);
         return ResponseEntity.ok(salva);
@@ -142,7 +146,7 @@ public class CategoriaController {
         Categoria categoriaExistente = categoriaRepository.findById(id)
             .orElse(null);
         if (categoriaExistente == null) {
-            throw new RuntimeException("Categoria não encontrada.");
+            throw new RegraNegocioException("Categoria não encontrada.");
         }
         categoriaExistente.setNome(categoria.getNome());
         Categoria salva = categoriaRepository.save(categoriaExistente);
@@ -159,7 +163,7 @@ public class CategoriaController {
     public ResponseEntity<Void> deletarCategoria(
         @Parameter(description = "ID da categoria", example = "1") @PathVariable Long id) {
         if (!categoriaRepository.existsById(id)) {
-            throw new RuntimeException("Categoria não encontrada.");
+            throw new RegraNegocioException("Categoria não encontrada.");
         }
         categoriaRepository.deleteById(id);
         return ResponseEntity.noContent().build();

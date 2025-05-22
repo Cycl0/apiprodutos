@@ -22,6 +22,7 @@ import io.swagger.v3.oas.annotations.parameters.*;
 
 import com.apiprodutos.dto.DescontoResponse;
 import com.apiprodutos.exception.ErrorResponse;
+import com.apiprodutos.exception.RegraNegocioException;
 
 @RestController
 @RequestMapping("/produtos")
@@ -89,26 +90,24 @@ public class ProdutoController {
         Produto produto = produtoRepository.findById(id)
             .orElse(null);
         if (produto == null) {
-            throw new RuntimeException("Produto não encontrado.");
+            throw new RegraNegocioException("Produto não encontrado.");
         }
         if (percentual < 0 || percentual > 50) {
-            throw new RuntimeException("O percentual de desconto deve ser entre 0% e 50%.");
+            throw new RegraNegocioException("O percentual de desconto deve ser entre 0% e 50%.");
         }
-
         double precoOriginal = produto.getPreco();
         double precoFinal = precoOriginal * (1 - percentual / 100.0);
         String descontoAplicado = percentual + "%";
-
         return ResponseEntity.ok(
             new DescontoResponse(produto.getNome(), precoOriginal, descontoAplicado, precoFinal)
         );
     }
 
-    @Operation(summary = "Criar novo produto", description = "Cadastra um novo produto. Não permite nomes duplicados e exige categoria existente.")
+    @Operation(summary = "Criar novo produto", description = "Cadastra um novo produto. Não permite nomes duplicados, exige categoria existente e impede id duplicado.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Produto criado com sucesso",
             content = @Content(schema = @Schema(implementation = Produto.class))),
-        @ApiResponse(responseCode = "400", description = "Nome do produto já existe, categoria não encontrada ou regra de negócio violada",
+        @ApiResponse(responseCode = "400", description = "Nome do produto já existe, categoria não encontrada, id já existe ou regra de negócio violada",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping
@@ -118,19 +117,22 @@ public class ProdutoController {
         @Valid @RequestBody Produto produto,
         @Parameter(description = "ID da categoria do produto", example = "1") @RequestParam Long categoriaId) {
 
+        if (produto.getId() != null && produtoRepository.existsById(produto.getId())) {
+            throw new RegraNegocioException("ID do produto já existe");
+        }
         Categoria categoria = categoriaRepository.findById(categoriaId)
-            .orElseThrow(() -> new RuntimeException("Categoria não encontrada."));
+            .orElseThrow(() -> new RegraNegocioException("Categoria não encontrada."));
         produto.setCategoria(categoria);
 
         boolean produtoExistente = produtoRepository.findAll().stream()
             .anyMatch(p -> p.getNome().equalsIgnoreCase(produto.getNome()));
         if (produtoExistente) {
-            throw new RuntimeException("Já existe um produto com esse nome.");
+            throw new RegraNegocioException("Já existe um produto com esse nome.");
         }
 
         if (produto.getNome() != null && produto.getPreco() != null) {
             if (produto.getNome().toLowerCase().contains("promoção") && produto.getPreco() >= 500) {
-                throw new RuntimeException("O preço de produtos em promoção deve ser menor que R$ 500,00.");
+                throw new RegraNegocioException("O preço de produtos em promoção deve ser menor que R$ 500,00.");
             }
         }
 
@@ -158,20 +160,20 @@ public class ProdutoController {
         Produto existente = produtoRepository.findById(id)
             .orElse(null);
         if (existente == null) {
-            return ResponseEntity.notFound().build();
+            throw new RegraNegocioException("Produto não encontrado.");
         }
         Categoria categoria = categoriaRepository.findById(categoriaId)
-            .orElseThrow(() -> new RuntimeException("Categoria não encontrada."));
+            .orElseThrow(() -> new RegraNegocioException("Categoria não encontrada."));
         produto.setCategoria(categoria);
 
         boolean nomeDuplicado = produtoRepository.findAll().stream()
             .anyMatch(p -> !p.getId().equals(id) && p.getNome().equalsIgnoreCase(produto.getNome()));
         if (nomeDuplicado) {
-            throw new RuntimeException("Já existe um produto com esse nome.");
+            throw new RegraNegocioException("Já existe um produto com esse nome.");
         }
         if (produto.getNome() != null && produto.getPreco() != null) {
             if (produto.getNome().toLowerCase().contains("promoção") && produto.getPreco() >= 500) {
-                throw new RuntimeException("O preço de produtos em promoção deve ser menor que R$ 500,00.");
+                throw new RegraNegocioException("O preço de produtos em promoção deve ser menor que R$ 500,00.");
             }
         }
         produto.setId(id);
