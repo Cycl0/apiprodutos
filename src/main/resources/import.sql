@@ -1,3 +1,6 @@
+DELETE FROM produto;
+DELETE FROM categoria;
+
 -- Inserir categorias
 INSERT INTO categoria (id, nome) VALUES (1, 'Informática');
 INSERT INTO categoria (id, nome) VALUES (2, 'Livros');
