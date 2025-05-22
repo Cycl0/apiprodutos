@@ -4,6 +4,7 @@ import com.apiprodutos.model.Produto;
 import com.apiprodutos.model.Categoria;
 import com.apiprodutos.repository.ProdutoRepository;
 import com.apiprodutos.repository.CategoriaRepository;
+import com.apiprodutos.service.ProdutoService;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
@@ -27,12 +28,10 @@ import com.apiprodutos.exception.RegraNegocioException;
 @RestController
 @RequestMapping("/produtos")
 public class ProdutoController {
-    private final ProdutoRepository produtoRepository;
-    private final CategoriaRepository categoriaRepository;
+    private final ProdutoService produtoService;
 
-    public ProdutoController(ProdutoRepository produtoRepository, CategoriaRepository categoriaRepository) {
-        this.produtoRepository = produtoRepository;
-        this.categoriaRepository = categoriaRepository;
+    public ProdutoController(ProdutoService produtoService) {
+        this.produtoService = produtoService;
     }
 
     @Operation(summary = "Listar todos os produtos", description = "Retorna todos os produtos cadastrados.")
@@ -42,7 +41,7 @@ public class ProdutoController {
     })
     @GetMapping
     public List<Produto> listarProdutos() {
-        return produtoRepository.findAll();
+        return produtoService.listarTodos();
     }
 
     @Operation(summary = "Buscar produto por ID", description = "Retorna um produto pelo seu ID.")
@@ -55,12 +54,7 @@ public class ProdutoController {
     @GetMapping("/{id}")
     public ResponseEntity<Produto> buscarProduto(
         @Parameter(description = "ID do produto", example = "1") @PathVariable Long id) {
-        Produto produto = produtoRepository.findById(id)
-            .orElse(null);
-        if (produto == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(produto);
+        return ResponseEntity.ok(produtoService.buscarPorId(id));
     }
 
     @Operation(summary = "Buscar produtos por nome", description = "Busca produtos cujo nome contenha o texto informado (case insensitive). Retorna lista vazia se nada for encontrado.")
@@ -71,7 +65,7 @@ public class ProdutoController {
     @GetMapping("/buscar")
     public ResponseEntity<List<Produto>> buscarProduto(
         @Parameter(description = "Nome do produto para busca", example = "Notebook") @RequestParam String nome) {
-        return ResponseEntity.ok(produtoRepository.findByNomeContainingIgnoreCase(nome));
+        return ResponseEntity.ok(produtoService.buscarPorNome(nome));
     }
 
     @Operation(summary = "Calcular preço com desconto", description = "Retorna o valor original e o valor com desconto de um produto, dado um percentual de desconto. Não permite descontos maiores que 50%.")
@@ -87,20 +81,7 @@ public class ProdutoController {
     public ResponseEntity<DescontoResponse> aplicarDesconto(
         @Parameter(description = "ID do produto", example = "1") @PathVariable Long id,
         @Parameter(description = "Percentual de desconto (0 a 50)", example = "10") @RequestParam Double percentual) {
-        Produto produto = produtoRepository.findById(id)
-            .orElse(null);
-        if (produto == null) {
-            throw new RegraNegocioException("Produto não encontrado.");
-        }
-        if (percentual < 0 || percentual > 50) {
-            throw new RegraNegocioException("O percentual de desconto deve ser entre 0% e 50%.");
-        }
-        double precoOriginal = produto.getPreco();
-        double precoFinal = precoOriginal * (1 - percentual / 100.0);
-        String descontoAplicado = percentual + "%";
-        return ResponseEntity.ok(
-            new DescontoResponse(produto.getNome(), precoOriginal, descontoAplicado, precoFinal)
-        );
+        return ResponseEntity.ok(produtoService.aplicarDesconto(id, percentual));
     }
 
     @Operation(summary = "Criar novo produto", description = "Cadastra um novo produto. Não permite nomes duplicados, exige categoria existente e impede id duplicado.")
@@ -116,27 +97,7 @@ public class ProdutoController {
             content = @Content(schema = @Schema(implementation = Produto.class)))
         @Valid @RequestBody Produto produto,
         @Parameter(description = "ID da categoria do produto", example = "1") @RequestParam Long categoriaId) {
-
-        if (produto.getId() != null && produtoRepository.existsById(produto.getId())) {
-            throw new RegraNegocioException("ID do produto já existe");
-        }
-        Categoria categoria = categoriaRepository.findById(categoriaId)
-            .orElseThrow(() -> new RegraNegocioException("Categoria não encontrada."));
-        produto.setCategoria(categoria);
-
-        boolean produtoExistente = produtoRepository.findAll().stream()
-            .anyMatch(p -> p.getNome().equalsIgnoreCase(produto.getNome()));
-        if (produtoExistente) {
-            throw new RegraNegocioException("Já existe um produto com esse nome.");
-        }
-
-        if (produto.getNome() != null && produto.getPreco() != null) {
-            if (produto.getNome().toLowerCase().contains("promoção") && produto.getPreco() >= 500) {
-                throw new RegraNegocioException("O preço de produtos em promoção deve ser menor que R$ 500,00.");
-            }
-        }
-
-        Produto salvo = produtoRepository.save(produto);
+        Produto salvo = produtoService.criarProduto(produto, categoriaId);
         return ResponseEntity.status(HttpStatus.CREATED).body(salvo);
     }
 
@@ -156,28 +117,7 @@ public class ProdutoController {
             content = @Content(schema = @Schema(implementation = Produto.class)))
         @Valid @RequestBody Produto produto,
         @Parameter(description = "ID da categoria do produto", example = "1") @RequestParam Long categoriaId) {
-
-        Produto existente = produtoRepository.findById(id)
-            .orElse(null);
-        if (existente == null) {
-            throw new RegraNegocioException("Produto não encontrado.");
-        }
-        Categoria categoria = categoriaRepository.findById(categoriaId)
-            .orElseThrow(() -> new RegraNegocioException("Categoria não encontrada."));
-        produto.setCategoria(categoria);
-
-        boolean nomeDuplicado = produtoRepository.findAll().stream()
-            .anyMatch(p -> !p.getId().equals(id) && p.getNome().equalsIgnoreCase(produto.getNome()));
-        if (nomeDuplicado) {
-            throw new RegraNegocioException("Já existe um produto com esse nome.");
-        }
-        if (produto.getNome() != null && produto.getPreco() != null) {
-            if (produto.getNome().toLowerCase().contains("promoção") && produto.getPreco() >= 500) {
-                throw new RegraNegocioException("O preço de produtos em promoção deve ser menor que R$ 500,00.");
-            }
-        }
-        produto.setId(id);
-        Produto salvo = produtoRepository.save(produto);
+        Produto salvo = produtoService.atualizarProduto(id, produto, categoriaId);
         return ResponseEntity.ok(salvo);
     }
 
@@ -190,10 +130,7 @@ public class ProdutoController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletarProduto(
         @Parameter(description = "ID do produto", example = "1") @PathVariable Long id) {
-        if (!produtoRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
-        produtoRepository.deleteById(id);
+        produtoService.deletarProduto(id);
         return ResponseEntity.noContent().build();
     }
 }

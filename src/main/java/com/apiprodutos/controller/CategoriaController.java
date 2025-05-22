@@ -2,8 +2,8 @@ package com.apiprodutos.controller;
 
 import com.apiprodutos.model.Categoria;
 import com.apiprodutos.model.Produto;
-import com.apiprodutos.repository.CategoriaRepository;
 import com.apiprodutos.repository.ProdutoRepository;
+import com.apiprodutos.service.CategoriaService;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
@@ -27,12 +27,10 @@ import com.apiprodutos.exception.RegraNegocioException;
 @RestController
 @RequestMapping("/categorias")
 public class CategoriaController {
-    private final CategoriaRepository categoriaRepository;
-    private final ProdutoRepository produtoRepository;
+    private final CategoriaService categoriaService;
 
-    public CategoriaController(CategoriaRepository categoriaRepository, ProdutoRepository produtoRepository) {
-        this.categoriaRepository = categoriaRepository;
-        this.produtoRepository = produtoRepository;
+    public CategoriaController(CategoriaService categoriaService) {
+        this.categoriaService = categoriaService;
     }
 
     @Operation(summary = "Listar todas as categorias", description = "Retorna todas as categorias cadastradas.")
@@ -42,7 +40,7 @@ public class CategoriaController {
     })
     @GetMapping
     public List<Categoria> listarCategorias() {
-        return categoriaRepository.findAll();
+        return categoriaService.listarTodas();
     }
 
     @Operation(summary = "Buscar categoria por ID", description = "Retorna uma categoria pelo seu ID.")
@@ -55,12 +53,7 @@ public class CategoriaController {
     @GetMapping("/{id}")
     public ResponseEntity<Categoria> buscarCategoria(
         @Parameter(description = "ID da categoria", example = "1") @PathVariable Long id) {
-        Categoria categoria = categoriaRepository.findById(id)
-            .orElse(null);
-        if (categoria == null) {
-            throw new RegraNegocioException("Categoria não encontrada.");
-        }
-        return ResponseEntity.ok(categoria);
+        return ResponseEntity.ok(categoriaService.buscarPorId(id));
     }
 
     @Operation(
@@ -87,12 +80,7 @@ public class CategoriaController {
     @GetMapping("/{id}/produtos")
     public ResponseEntity<List<Produto>> listarProdutorPorCategoria(
         @Parameter(description = "ID da categoria", example = "1") @PathVariable Long id) {
-        Categoria categoria = categoriaRepository.findById(id)
-            .orElse(null);
-        if (categoria == null) {
-            throw new RegraNegocioException("Categoria não encontrada.");
-        }
-        return ResponseEntity.ok(produtoRepository.findByCategoriaId(id));
+        return ResponseEntity.ok(categoriaService.listarProdutosPorCategoria(id));
     }
 
     @Operation(summary = "Buscar categorias por nome", description = "Busca categorias cujo nome contenha o texto informado (case insensitive). Retorna lista vazia se nada for encontrado.")
@@ -103,7 +91,7 @@ public class CategoriaController {
     @GetMapping("/buscar")
     public ResponseEntity<List<Categoria>> buscarCategoria(
         @Parameter(description = "Nome da categoria para busca", example = "Informática") @RequestParam String nome) {
-        return ResponseEntity.ok(categoriaRepository.findByNomeContainingIgnoreCase(nome));
+        return ResponseEntity.ok(categoriaService.buscarPorNome(nome));
     }
 
     @Operation(summary = "Criar nova categoria", description = "Cadastra uma nova categoria. Não permite nomes duplicados e impede id duplicado.")
@@ -118,15 +106,7 @@ public class CategoriaController {
         @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Dados da categoria a ser criada", required = true,
             content = @Content(schema = @Schema(implementation = Categoria.class)))
         @RequestBody Categoria categoria) {
-        if (categoria.getId() != null && categoriaRepository.existsById(categoria.getId())) {
-            throw new RegraNegocioException("ID da categoria já existe");
-        }
-        boolean nomeDuplicado = categoriaRepository.findAll().stream()
-            .anyMatch(c -> c.getNome().equalsIgnoreCase(categoria.getNome()));
-        if (nomeDuplicado) {
-            throw new RegraNegocioException("Já existe uma categoria com esse nome.");
-        }
-        Categoria salva = categoriaRepository.save(categoria);
+        Categoria salva = categoriaService.criarCategoria(categoria);
         return ResponseEntity.ok(salva);
     }
 
@@ -143,13 +123,7 @@ public class CategoriaController {
         @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Dados da categoria a ser atualizada", required = true,
             content = @Content(schema = @Schema(implementation = Categoria.class)))
         @Valid @RequestBody Categoria categoria) {
-        Categoria categoriaExistente = categoriaRepository.findById(id)
-            .orElse(null);
-        if (categoriaExistente == null) {
-            throw new RegraNegocioException("Categoria não encontrada.");
-        }
-        categoriaExistente.setNome(categoria.getNome());
-        Categoria salva = categoriaRepository.save(categoriaExistente);
+        Categoria salva = categoriaService.atualizarCategoria(id, categoria);
         return ResponseEntity.ok(salva);
     }
 
@@ -162,10 +136,7 @@ public class CategoriaController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletarCategoria(
         @Parameter(description = "ID da categoria", example = "1") @PathVariable Long id) {
-        if (!categoriaRepository.existsById(id)) {
-            throw new RegraNegocioException("Categoria não encontrada.");
-        }
-        categoriaRepository.deleteById(id);
+        categoriaService.deletarCategoria(id);
         return ResponseEntity.noContent().build();
     }
 }
